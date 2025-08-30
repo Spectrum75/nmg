@@ -29,8 +29,8 @@ if [[ "$confirm" = "y" ]]; then
         echo "${GREEN}Removed configuration files${RESET}"
     fi
     
-    if [ -d "NMG" ]; then
-        rm -rf nmg
+    if [ -d "$HOME/nmg" ]; then
+        rm -rf "$HOME"/nmg
         echo "${GREEN}Removed NMG installation${RESET}"
     else
         echo "${YELLOW}NMG directory not found${RESET}"
