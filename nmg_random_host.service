@@ -1,0 +1,11 @@
+[Unit]
+Description=Set a random hostname at every boot
+Wants=network-pre.target
+Before=network-pre.target
+
+[Service]
+ExecStart=/etc/systemd/scripts/nmg_random_host.sh
+Type=oneshot
+
+[Install]
+WantedBy=multi-user.target
