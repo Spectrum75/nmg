@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-#Colour escape sequences
+#colour escape sequences
 RED=$'\033[0;31m'
 RESET=$'\033[0m' 
 GREEN=$'\033[0;32m'
 YELLOW=$'\033[1;33m'
+#config directory
+CONFIG_DIR="$HOME/.config/nmg"
+CONFIG_FILE="$CONFIG_DIR/nmgc.conf"
 echo '
 .__   __. .___  ___.   _______ 
 |  \ |  | |   \/   |  /  _____|
@@ -13,14 +16,7 @@ echo '
 |__| \__| |__|  |__|  \______| 
 
 '
-echo -e "${YELLOW}Checking for network manager...${RESET}"
-if systemctl list-unit-files "NetworkManager.service" >/dev/null 2>&1; then
-    echo -e "${GREEN}Network Manager found!${RESET}"
-else
-    echo -e "${GREEN}Network manager is not installed, please install and configure it to continue${RESET}"
-fi
-
-if [ -f "nmg.conf" ] && [ "$(cat nmg.conf)" = "update_check=1" ]; then
+if [ -f "$CONFIG_FILE" ] && grep -q "update_check=1" "$CONFIG_FILE"; then
 echo -e "${YELLOW}Checking for updates...${YELLOW}"
 localhash="$(git rev-parse HEAD)"
 latesthash="$(git ls-remote https://github.com/spectrum75/nmg HEAD | awk '{print $1}')"
@@ -33,6 +29,14 @@ latesthash="$(git ls-remote https://github.com/spectrum75/nmg HEAD | awk '{print
         echo "${GREEN}You are up to date!${RESET}"
     fi
 fi
+
+echo -e "${YELLOW}Checking for network manager...${RESET}"
+if systemctl list-unit-files "NetworkManager.service" >/dev/null 2>&1; then
+    echo -e "${GREEN}Network Manager found!${RESET}"
+else
+    echo -e "${GREEN}Network manager is not installed, please install and configure it to continue${RESET}"
+fi
+
 echo -e "\n"
 echo 'Choose your option below, to continue:
 1 Display current hostname
@@ -90,8 +94,8 @@ case $option in
 
             read -r -p "Do you want to set [g]eneric or [r]andom hostnames? " hst_opt
             if [ "$hst_opt" = 'g' ]; then
-                echo "host_setting=generic" > "nmgc.conf"
-                echo "original_hostname=$HOSTNAME" >> "nmgc.conf"
+                echo "host_setting=generic" > "$CONFIG_FILE"
+                echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
                 echo "${YELLOW}Setting generic hostname using prefix 'DESKTOP'...${RESET}"
                 sudo hostnamectl set-hostname "DESKTOP-$(tr -dc 'A-Z0-9' </dev/urandom | head -c7)"
                 gn_hst=$?
@@ -101,8 +105,8 @@ case $option in
                     echo "${RED}Failed to set a generic hostname${RESET}"
                 fi
             elif [ "$hst_opt" = 'r' ]; then
-                echo "host_setting=random" > "nmgc.conf"
-                echo "original_hostname=$HOSTNAME" >> "nmgc.conf"
+                echo "host_setting=random" > "$CONFIG_FILE"
+                echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
                 echo "${YELLOW}Executing the random hostname module...${RESET}"
                 sudo bash "nmg_random_host.sh"
                 hst_mn=$?
@@ -145,11 +149,11 @@ case $option in
     3)
         echo "${YELLOW}Disabling ghost mode...${RESET}"
         
-        # stop services
-        if [ -f "nmgc.conf" ]; then
+        #stop services
+        if [ -f "$CONFIG_FILE" ]; then
             echo "${GREEN}Checking hostname configuration...${RESET}"
             
-            if grep -q "host_setting=random" "nmgc.conf"; then
+            if grep -q "host_setting=random" "$CONFIG_FILE"; then
                 echo "${YELLOW}Stopping and disabling random hostname service...${RESET}"
                 sudo systemctl stop nmg_random_host.service 2>/dev/null
                 sudo systemctl disable nmg_random_host.service 2>/dev/null
@@ -157,7 +161,7 @@ case $option in
             fi
         fi
 
-        # remove network manager config
+        #remove network manager config
         echo -e "${GREEN}Removing configuration file...${RESET}"
         sudo rm -f /etc/NetworkManager/conf.d/nmg.conf
         rm_conf=$?
@@ -167,7 +171,7 @@ case $option in
             echo "${YELLOW}Configuration file not found or already removed${RESET}"
         fi
 
-        # remove ipv6 privacy extensions
+        #restore ipv6 privacy extensions back to normal
         echo -e "${GREEN}Removing ipv6 privacy extensions...${RESET}"
         nmcli -g NAME connection show --active | while IFS= read -r connection; do
             type=$(nmcli connection show "$connection" | grep '^connection.type:' | awk '{print $2}')
@@ -185,7 +189,7 @@ case $option in
             fi
         done
 
-        # restart network manager to apply changes
+        #restart network manager to apply changes
         echo "${GREEN}Restarting network manager...${RESET}"
         sudo systemctl restart NetworkManager
         restart=$?
@@ -195,8 +199,8 @@ case $option in
             echo "${RED}Error restarting NetworkManager${RESET}"
         fi
 
-        # restore original hostname
-        if [ -f "nmgc.conf" ]; then
+        #restore original hostname
+        if [ -f "$CONFIG_FILE" ]; then
             ORIGINAL_HOSTNAME=$(grep "original_hostname=" nmgc.conf | cut -d= -f2)
             
             if [ -n "$ORIGINAL_HOSTNAME" ]; then
@@ -209,8 +213,8 @@ case $option in
                 fi
             fi
 
-            # remove systemd service
-            if grep -q "host_setting=random" "nmgc.conf"; then
+            #remove systemd service
+            if grep -q "host_setting=random" "$CONFIG_FILE"; then
                 echo "${YELLOW}Cleaning up the random hostname service...${RESET}"
                 sudo rm -f /etc/systemd/scripts/nmg_random_host.sh
                 sudo rm -f /etc/systemd/system/nmg_random_host.service
@@ -218,7 +222,7 @@ case $option in
                 echo "${GREEN}Random hostname service completely removed${RESET}"
             fi
 
-            # remove config
+            #remove config
             rm -f nmgc.conf
             echo "${GREEN}Configuration cleaned up${RESET}"
         else
@@ -230,8 +234,8 @@ case $option in
         ;;
 
     4) 
-        # check the config file first
-        if [ -f "nmgc.conf" ] && grep -q "host_setting=random" "nmgc.conf"; then
+        #check the config file first
+        if [ -f "$CONFIG_FILE" ] && grep -q "host_setting=random" "$CONFIG_FILE"; then
             echo -e "${RED}╔══════════════════════════════════════════════════╗${RESET}"
             echo -e "${RED}║                     WARNING!                     ║${RESET}"
             echo -e "${RED}╚══════════════════════════════════════════════════╝${RESET}"
@@ -261,8 +265,8 @@ case $option in
             reset_gn_hst=$?
             if [ "$reset_gn_hst" = 0 ]; then
                 echo "${GREEN}Generic hostname has been set successfully!${RESET}"
-                echo "host_setting=generic" > "nmgc.conf"
-                echo "original_hostname=$HOSTNAME" >> "nmgc.conf"
+                echo "host_setting=generic" > "$CONFIG_FILE"
+                echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
             else
                 echo "${RED}Failed to set a generic hostname${RESET}"
             fi
@@ -280,6 +284,6 @@ case $option in
         ;;
 
     *) 
-        echo -e "${RED}Invalid option was selected!${RESET}"
+        echo "${RED}Invalid option was selected!${RESET}"
         ;;
 esac
