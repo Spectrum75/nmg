@@ -30,7 +30,7 @@ if [[ "$confirm" = "y" ]]; then
     fi
     
     if [ -d "NMG" ]; then
-        rm -rf NMG
+        rm -rf nmg
         echo "${GREEN}Removed NMG installation${RESET}"
     else
         echo "${YELLOW}NMG directory not found${RESET}"
