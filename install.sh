@@ -27,12 +27,15 @@ if [ "$clone" = 0 ]; then
         sudo chown root:root nmg_random_host.sh 2>/dev/null || echo "${RED}Changing ownership of script failed${RESET}"
         sudo chmod 644 nmg_random_host.service 2>/dev/null || echo "${RED}Changing permission of service failed${RESET}"
         sudo chmod 755 nmg_random_host.sh 2>/dev/null || echo "${RED}Changing permission of script failed${RESET}"
-        
+        chmod +x uninstall.sh
+        chmod +x nmg.sh
         echo "${GREEN}Secure ownership and permissions set successfully!${RESET}"
     elif [[ "$confirm" = "n" ]]; then
         echo "${GREEN}Skipped ownership setting${RESET}"
         chmod 644 nmg_random_host.service 2>/dev/null
         chmod 755 nmg_random_host.sh 2>/dev/null
+        chmod +x uninstall.sh
+        chmod +x nmg.sh
     else
         echo "${RED}Invalid option was selected!${RESET}"
         exit 1
