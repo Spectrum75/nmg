@@ -16,6 +16,12 @@ Select option:
 ```
 Network Manager Ghost (NMG) is a CLI frotend to tweak various privacy settings in network manager
 
+## Installation:
+
+Run the following oneliner to start the install.sh script:
+
+`wget https://raw.githubusercontent.com/Spectrum75/nmg/refs/heads/main/install.sh && chmod +x install.sh && ./install.sh`
+
 ## Available Modes:
 
 * Ghost mode (with random hostnames generated at boot time)
