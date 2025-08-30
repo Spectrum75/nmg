@@ -18,6 +18,7 @@ echo '
 '
 if [ -f "$CONFIG_FILE" ] && grep -q "update_check=1" "$CONFIG_FILE"; then
 echo -e "${YELLOW}Checking for updates...${YELLOW}"
+cd "$HOME"/nmg || echo "${RED}Failed to change directory${RESET}"
 localhash="$(git rev-parse HEAD)"
 latesthash="$(git ls-remote https://github.com/spectrum75/nmg HEAD | awk '{print $1}')"
     if [ "$localhash" != "$latesthash" ] && [ ! -z "$latesthash" ] && [ ! -z "$localhash" ];then
