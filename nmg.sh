@@ -26,6 +26,7 @@ latesthash="$(git ls-remote https://github.com/spectrum75/nmg HEAD | awk '{print
         git clean -fd
         git reset --hard
         git pull https://github.com/spectrum75/nmg HEAD || echo "$S{RED}Update failed, please check your connection and try again${RESET}"
+        chmod +x nmg.sh
         exec "$0" "$@"
     else
         echo "${GREEN}You are up to date!${RESET}"
