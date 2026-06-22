@@ -255,7 +255,8 @@ case $option in
             fi
 
             #remove config
-            rm -f nmgc.conf
+            sed -i '/^host_setting=/d' "$CONFIG_FILE"
+            sed -i '/^original_hostname=/d' "$CONFIG_FILE"
             success "Configuration cleaned up"
         else
             info "No hostname configuration found$"
