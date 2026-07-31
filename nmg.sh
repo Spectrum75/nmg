@@ -324,7 +324,7 @@ case $option in
 
     5)
         echo "Network Manager Ghost"
-        echo "A CLI frotend to tweak various privacy settings in network manager"
+        echo "A CLI frontend to tweak various privacy settings in network manager"
         echo "Issue tracker: https://github.com/Spectrum75/nmg"
         ;;
 
