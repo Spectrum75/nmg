@@ -126,23 +126,31 @@ case $option in
 
             read -r -p "Do you want to set [g]eneric or [r]andom hostnames? " hst_opt
             if [ "$hst_opt" = 'g' ]; then
-                echo "host_setting=generic" > "$CONFIG_FILE"
-                echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
+                if ! grep -q "^original_hostname=" "$CONFIG_FILE" 2>/dev/null; then
+                    echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
+                fi
+                
                 info "Setting generic hostname using prefix 'DESKTOP'..."
                 sudo hostnamectl set-hostname "DESKTOP-$(tr -dc 'A-Z0-9' </dev/urandom | head -c7)"
                 gn_hst=$?
                 if [ "$gn_hst" = 0 ]; then
+                    sed -i '/^host_setting=/d' "$CONFIG_FILE"
+                    echo "host_setting=generic" >> "$CONFIG_FILE"
                     success "Generic hostname has been set successfully"
                 else
                     error "Failed to set a generic hostname"
                 fi
             elif [ "$hst_opt" = 'r' ]; then
-                echo "host_setting=random" > "$CONFIG_FILE"
-                echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
+                if ! grep -q "^original_hostname=" "$CONFIG_FILE" 2>/dev/null; then
+                    echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
+                fi
+
                 info "Executing the random hostname module..."
                 sudo bash "nmg_random_host.sh"
                 hst_mn=$?
                 if [ "$hst_mn" = 0 ]; then
+                    sed -i '/^host_setting=/d' "$CONFIG_FILE"
+                    echo "host_setting=random" >> "$CONFIG_FILE"
                     success "Random hostname module executed successfully"
                 else
                     error "Failed to run the random hostname module"
@@ -233,8 +241,7 @@ case $option in
 
         #restore original hostname
         if [ -f "$CONFIG_FILE" ]; then
-            ORIGINAL_HOSTNAME=$(grep "original_hostname=" nmgc.conf | cut -d= -f2)
-            
+        ORIGINAL_HOSTNAME=$(grep "^original_hostname=" "$CONFIG_FILE" | cut -d= -f2)            
             if [ -n "$ORIGINAL_HOSTNAME" ]; then
                 success "Restoring original hostname: $ORIGINAL_HOSTNAME"
                 sudo hostnamectl set-hostname "$ORIGINAL_HOSTNAME"
@@ -259,7 +266,7 @@ case $option in
             sed -i '/^original_hostname=/d' "$CONFIG_FILE"
             success "Configuration cleaned up"
         else
-            info "No hostname configuration found$"
+            info "No hostname configuration found"
         fi
 
         success "Ghost mode has been completely disabled!"
@@ -272,12 +279,12 @@ case $option in
             warning "╔══════════════════════════════════════════════════╗"
             warning "║                     WARNING!                     ║"
             warning "╚══════════════════════════════════════════════════╝"
-            warning "ERROR: Random hostname mode detected!$"
+            warning "ERROR: Random hostname mode detected!"
             info "Please use option 3 (Disable ghost mode) first to properly"
             info "clean up the random hostname configuration."
             echo -e ""
-            warning "Using this option with the random hostname mode will cause$"
-            warning "configuration conflicts and system inconsistencies!$"
+            warning "Using this option with the random hostname mode will cause"
+            warning "configuration conflicts and system inconsistencies!"
             exit 1
         fi
 
@@ -293,14 +300,19 @@ case $option in
         read -r -p "Do you want to continue? [y/n]: " confirm
         if [[ "$confirm" = "y" ]]; then
             info "Resetting generic hostname using prefix 'DESKTOP'..."
+            
+            if ! grep -q "^original_hostname=" "$CONFIG_FILE" 2>/dev/null; then
+                echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
+            fi
+
             sudo hostnamectl set-hostname "DESKTOP-$(tr -dc 'A-Z0-9' </dev/urandom | head -c7)"
             reset_gn_hst=$?
             if [ "$reset_gn_hst" = 0 ]; then
+                sed -i '/^host_setting=/d' "$CONFIG_FILE"
+                echo "host_setting=generic" >> "$CONFIG_FILE"
                 success "Generic hostname has been set successfully!"
-                echo "host_setting=generic" > "$CONFIG_FILE"
-                echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
             else
-                echo "Failed to set a generic hostname"
+                warning "Failed to set a generic hostname"
             fi
         elif [[ "$confirm" = "n" ]]; then
             clear
