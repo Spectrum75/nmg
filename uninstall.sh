@@ -22,7 +22,7 @@ if [[ "$confirm" = "y" ]]; then
         sed -i '/alias nmg=/d' "$HOME/.zshrc"
         sed -i '/# NMG alias/d' "$HOME/.zshrc"
     fi
-    echo "${GREEN}Removed NMG aliase(s) from rc file(s)${RESET}"
+    echo "${GREEN}Removed NMG aliase(es) from rc file(s)${RESET}"
     
     if [ -d "$CONFIG_DIR" ]; then
         rm -rf "$CONFIG_DIR"
