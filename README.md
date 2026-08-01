@@ -1,28 +1,30 @@
-```
-.__   __. .___  ___.   _______ 
-|  \ |  | |   \/   |  /  _____|
-|   \|  | |  \  /  | |  |  __  
-|  . `  | |  |\/|  | |  | |_ | 
-|  |\   | |  |  |  | |  |__| | 
-|__| \__| |__|  |__|  \______| 
+<img width="700" height="650" alt="header" src="https://github.com/user-attachments/assets/0ccd563c-aa4f-40c0-a974-ab1dce8e3152" />
 
-Choose your option below, to continue:
-1 Display current hostname
-2 Enable ghost mode 
-3 Disable ghost mode
-4 Reset generic hostname
-5 About
-Select option:
-```
 Network Manager Ghost (NMG) is a CLI frotend to tweak various privacy settings in network manager
-
-## Installation:
-
-Run the following oneliner to start the install.sh script:
-
-`wget https://raw.githubusercontent.com/Spectrum75/nmg/refs/heads/main/install.sh && chmod +x install.sh && ./install.sh`
 
 ## Available Modes:
 
-* Ghost mode (with random hostnames generated at boot time)
-* Ghost mode (with generic hostname set once, can be reset whenever needed)
+### Display Current Hostname:
+
+Gets the current system hostname (spoofed or original) and displays it.
+
+### Enable Ghost Mode:
+
+Enables Mac address randomization for all available connection, this address also changes during every connection. The hostname is protected from being sent to the DHCP server as well. The network would only see the spoofed Mac address for both IPv4 and IPv6 (due to IPv6 Privacy Extensions).
+
+### Disable Ghost Mode:
+
+Removes the NetworkManager privacy configuration and restores your system's default network behavior. Your real Mac address and hostname will be visible to the network again.
+
+### Switch To A Generic Windows Based Hostname/Regenerate It:
+
+Requires running ghost mode once, uses a stock Windows like hostname (eg: DESKTOP-ABCD123) instead of not sending hostname at all. This is useful on certain networks where not having a hostname might cause issues. Running it after enabling it earlier regenerates the current hostname using the same style.
+
+### Switch Back To Ghost Mode:
+
+Restores the original hostname and then enables ghost mode. Since ghost mode doesn't send any hostname, the restored hostname is kept safe.
+
+### About This Script:
+
+Pretty self explanatory :)
+
