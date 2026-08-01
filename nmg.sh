@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
-#error function
 function error {
   echo -e "\\e[91m$1\\e[39m"
   exit 1
 }
-#warning function
+
 function warning {
   echo -e "\\e[91m$1\\e[39m"
 }
-#info function
+
 function info {
   echo -e "\\e[033m$1\\e[39m"
 }
-#success function
+
 function success {
   echo -e "\\e[032m$1\\e[39m"
 }
+
 #config directory
 CONFIG_DIR="$HOME/.config/nmg"
 CONFIG_FILE="$CONFIG_DIR/nmgc.conf"
+mkdir -p "$CONFIG_DIR"
 
 echo '
 .__   __. .___  ___.   _______ 
@@ -48,7 +49,7 @@ if [ -f "$CONFIG_FILE" ]; then
             success "You are up to date!"
         fi
     elif grep -q "update_check=0" "$CONFIG_FILE"; then
-        info "Update check explicitly disabled in the configuration"
+        info "Update check is disabled in the configuration"
     else
         info "Invalid or missing update_check value in configuration"
     fi
@@ -60,7 +61,7 @@ info "Checking for network manager..."
 if systemctl list-unit-files "NetworkManager.service" >/dev/null 2>&1; then
     success "Network Manager found!"
 else
-    success "Network manager is not installed, please install and configure it to continue"
+    error "Network manager is not installed, please install and configure it to continue"
 fi
 
 echo -e "\n"
@@ -68,8 +69,9 @@ echo 'Choose your option below, to continue:
 1 Display current hostname
 2 Enable ghost mode 
 3 Disable ghost mode
-4 Reset generic hostname
-5 About'
+4 Switch to a generic Windows based hostname/regenerate it
+5 Switch back to ghost mode
+6 About this script'
 read -r -p 'Select option: ' option
 echo -e "\n"
 
@@ -81,106 +83,35 @@ case $option in
     2)
         echo -e "The following changes are made in Ghost mode:"
         echo -e "\n"
-        echo -e "* Random MAC addresses are generated for a connection on an interface, every single time"
-        echo -e "* Random hostname is generated on every boot"
-        echo -e "* A new configuration file will be created at /etc/NetworkManager/conf.d"
-        echo -e "* IPv6 temporary address extension will be enabled for all currently known connections"
+        echo -e "* Random MAC addresses are generated during every connection"
+        echo -e "* IPv6 temporary address extensions are enabled"
+        echo -e "* NetworkManager is configured to not send your hostname to DHCP servers"
+        echo -e "* A configuration file is created at /etc/NetworkManager/conf.d/nmg.conf"
         echo -e "\n"
         read -r -p "$(info "Do you want to continue? [y/n]: ")" choice
         
-        if [ "$choice" = "y" ]; then
-            success "Copying configuration file..."
+        if [[ "$choice" == "y" ]]; then
+            sed -i '/^host_setting=/d' "$CONFIG_FILE"
+            echo "host_setting=ghost" >> "$CONFIG_FILE"
+
+            success "Applying NetworkManager ghost configuration..."
             sudo cp 'nmg.conf' /etc/NetworkManager/conf.d/
-            copy=$?
-            if [ "$copy" = 0 ]; then
+            if [ $? -eq 0 ]; then
                 success "Configuration applied successfully!"
             else
                 error "Error occurred while copying the configuration file"
             fi
 
-            success "Applying IPv6 privacy extensions..."
-            nmcli -g NAME connection show --active | while IFS= read -r connection; do
-                type=$(nmcli connection show "$connection" | grep '^connection.type:' | awk '{print $2}')
-                if [[ "$type" == "802-11-wireless" || "$type" == "ethernet" ]]; then
-                    success "Modifying $connection (type: $type)"
-                    nmcli connection modify "$connection" ipv6.ip6-privacy 2
-                    modify=$?
-                    if [ "$modify" = 0 ]; then
-                        success "IPv6 privacy extensions applied successfully!"
-                    else
-                        error "Error occurred while applying the IPv6 privacy extensions"
-                    fi
-                else
-                    info "Skipping $connection (type: $type)"
-                fi
-            done
-
-            success "Restarting network manager..."
+            success "Restarting NetworkManager to apply changes..."
             sudo systemctl restart NetworkManager
-            restart=$?
-            if [ "$restart" = 0 ]; then
+            if [ $? -eq 0 ]; then
                 success "NetworkManager restarted successfully!"
+                success "Ghost mode is now enabled!"
             else
-                error "An error occurred while attempting to restart network manager"
+                warning "Error restarting NetworkManager"
             fi
-
-            read -r -p "Do you want to set [g]eneric or [r]andom hostnames? " hst_opt
-            if [ "$hst_opt" = 'g' ]; then
-                if ! grep -q "^original_hostname=" "$CONFIG_FILE" 2>/dev/null; then
-                    echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
-                fi
-                
-                info "Setting generic hostname using prefix 'DESKTOP'..."
-                sudo hostnamectl set-hostname "DESKTOP-$(tr -dc 'A-Z0-9' </dev/urandom | head -c7)"
-                gn_hst=$?
-                if [ "$gn_hst" = 0 ]; then
-                    sed -i '/^host_setting=/d' "$CONFIG_FILE"
-                    echo "host_setting=generic" >> "$CONFIG_FILE"
-                    success "Generic hostname has been set successfully"
-                else
-                    error "Failed to set a generic hostname"
-                fi
-            elif [ "$hst_opt" = 'r' ]; then
-                if ! grep -q "^original_hostname=" "$CONFIG_FILE" 2>/dev/null; then
-                    echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
-                fi
-
-                info "Executing the random hostname module..."
-                sudo bash "nmg_random_host.sh"
-                hst_mn=$?
-                if [ "$hst_mn" = 0 ]; then
-                    sed -i '/^host_setting=/d' "$CONFIG_FILE"
-                    echo "host_setting=random" >> "$CONFIG_FILE"
-                    success "Random hostname module executed successfully"
-                else
-                    error "Failed to run the random hostname module"
-                fi
-                info "Copying the source script..."
-                sudo cp "nmg_random_host.sh" /etc/systemd/scripts/
-                hst_cp=$?
-                if [ "$hst_cp" = 0 ]; then
-                    success "Source script copied successfully!"
-                    sudo chmod 700 /etc/systemd/scripts/nmg_random_host.sh
-                else
-                    error "Error occurred while copying the source script"
-                fi
-                info "Installing the systemd service..."
-                sudo cp "nmg_random_host.service" /etc/systemd/system/
-                hst_in=$?
-                if [ "$hst_in" = 0 ]; then
-                    success "Systemd service installed successfully!"
-                    sudo systemctl daemon-reload
-                    sudo systemctl enable nmg_random_host.service
-                    sudo systemctl start nmg_random_host.service
-                    success "Systemd service started and enabled!"
-                else
-                    error "Error occurred while installing the systemd service"
-                fi
-            else 
-                error "Invalid option was selected!"
-            fi
-        elif [ "$choice" = "n" ]; then
-            exit 0
+        elif [[ "$choice" == "n" ]]; then
+            exec "$0" "$@"
         else
             warning "Invalid option was selected!"
         fi
@@ -189,142 +120,113 @@ case $option in
     3)
         info "Disabling ghost mode..."
         
-        #stop services
-        if [ -f "$CONFIG_FILE" ]; then
-            success "Checking hostname configuration..."
-            
-            if grep -q "host_setting=random" "$CONFIG_FILE"; then
-                info "Stopping and disabling random hostname service..."
-                sudo systemctl stop nmg_random_host.service 2>/dev/null
-                sudo systemctl disable nmg_random_host.service 2>/dev/null
-                success "Random hostname service stopped and disabled"
-            fi
-        fi
-
-        #remove network manager config
-        success "Removing configuration file..."
+        success "Removing NetworkManager configuration..."
         sudo rm -f /etc/NetworkManager/conf.d/nmg.conf
-        rm_conf=$?
-        if [ "$rm_conf" = 0 ]; then
-            success "Configuration file removed successfully!"
-        else
-            info "Configuration file not found or already removed"
-        fi
-
-        #restore IPv6 privacy extensions back to normal
-        success "Removing IPv6 privacy extensions..."
-        nmcli -g NAME connection show --active | while IFS= read -r connection; do
-            type=$(nmcli connection show "$connection" | grep '^connection.type:' | awk '{print $2}')
-            if [[ "$type" == "802-11-wireless" || "$type" == "ethernet" ]]; then
-                success "Modifying $connection (type: $type)"
-                nmcli connection modify "$connection" ipv6.ip6-privacy 0
-                modify=$?
-                if [ "$modify" = 0 ]; then
-                    success "IPv6 privacy extensions removed from $connection"
-                else
-                    warning "Error removing IPv6 privacy from $connection"
-                fi
-            else
-                info "Skipping $connection (type: $type)"
-            fi
-        done
-
-        #restart network manager to apply changes
-        success "Restarting network manager..."
+        
+        success "Restarting NetworkManager to restore defaults..."
         sudo systemctl restart NetworkManager
-        restart=$?
-        if [ "$restart" = 0 ]; then
+        if [ $? -eq 0 ]; then
             success "NetworkManager restarted successfully!"
         else
             warning "Error restarting NetworkManager"
         fi
 
-        #restore original hostname
         if [ -f "$CONFIG_FILE" ]; then
-        ORIGINAL_HOSTNAME=$(grep "^original_hostname=" "$CONFIG_FILE" | cut -d= -f2)            
-            if [ -n "$ORIGINAL_HOSTNAME" ]; then
-                success "Restoring original hostname: $ORIGINAL_HOSTNAME"
-                sudo hostnamectl set-hostname "$ORIGINAL_HOSTNAME"
-                if [ $? -eq 0 ]; then
-                    success "Hostname restored successfully!"
-                else
-                    warning "Failed to restore hostname"
-                fi
-            fi
-
-            #remove systemd service
-            if grep -q "host_setting=random" "$CONFIG_FILE"; then
-                info "Cleaning up the random hostname service..."
-                sudo rm -f /etc/systemd/scripts/nmg_random_host.sh
-                sudo rm -f /etc/systemd/system/nmg_random_host.service
-                sudo systemctl daemon-reload
-                success "Random hostname service completely removed"
-            fi
-
-            #remove config
             sed -i '/^host_setting=/d' "$CONFIG_FILE"
-            sed -i '/^original_hostname=/d' "$CONFIG_FILE"
-            success "Configuration cleaned up"
-        else
-            info "No hostname configuration found"
+            success "Local configuration cleaned up."
         fi
 
         success "Ghost mode has been completely disabled!"
-        info "Note: You may need to restart your network connections for all changes to take effect"
         ;;
 
     4) 
-        #check the config file first
-        if [ -f "$CONFIG_FILE" ] && grep -q "host_setting=random" "$CONFIG_FILE"; then
-            warning "╔══════════════════════════════════════════════════╗"
-            warning "║                     WARNING!                     ║"
-            warning "╚══════════════════════════════════════════════════╝"
-            warning "ERROR: Random hostname mode detected!"
-            info "Please use option 3 (Disable ghost mode) first to properly"
-            info "clean up the random hostname configuration."
-            echo -e ""
-            warning "Using this option with the random hostname mode will cause"
-            warning "configuration conflicts and system inconsistencies!"
-            exit 1
-        fi
-
-        warning "╔══════════════════════════════════════════════════╗"
-        warning "║                     WARNING!                     ║"
-        warning "╚══════════════════════════════════════════════════╝"
-        info "This option is designed for use with generic hostname mode only."
-        info "If you previously used random hostname mode, please use option 3"
-        info "(Disable ghost mode) first to properly clean up the configuration."
-        echo -e ""
-        warning "Using this with random hostname mode may cause configuration conflicts!"
+        info "This will generate a new generic Windows style hostname (like: DESKTOP-XXXXXXX)"
+        info "and configure NetworkManager to send that to DHCP servers, making the"
+        info "system appear as a normal Windows PC on the network."
         echo -e "\n"
         read -r -p "Do you want to continue? [y/n]: " confirm
-        if [[ "$confirm" = "y" ]]; then
-            info "Resetting generic hostname using prefix 'DESKTOP'..."
-            
+
+        if [[ "$confirm" == "y" ]]; then
+            info "Generating new generic Windows hostname..."
+
             if ! grep -q "^original_hostname=" "$CONFIG_FILE" 2>/dev/null; then
-                echo "original_hostname=$HOSTNAME" >> "$CONFIG_FILE"
+                echo "original_hostname=$(hostname)" >> "$CONFIG_FILE"
             fi
 
-            sudo hostnamectl set-hostname "DESKTOP-$(tr -dc 'A-Z0-9' </dev/urandom | head -c7)"
-            reset_gn_hst=$?
-            if [ "$reset_gn_hst" = 0 ]; then
+            NEW_HOST="DESKTOP-$(tr -dc 'A-Z0-9' </dev/urandom | head -c 7)"
+            sudo hostnamectl set-hostname "$NEW_HOST"
+
+            if [ $? -eq 0 ]; then
                 sed -i '/^host_setting=/d' "$CONFIG_FILE"
                 echo "host_setting=generic" >> "$CONFIG_FILE"
-                success "Generic hostname has been set successfully!"
+                success "Hostname set to '$NEW_HOST'"
             else
-                warning "Failed to set a generic hostname"
+                warning "Failed to set hostname. Please check permissions"
             fi
-        elif [[ "$confirm" = "n" ]]; then
-            clear
-            exec "$0" "$@"
+
+            if [ -f /etc/NetworkManager/conf.d/nmg.conf ]; then
+                sudo sed -i 's/^ipv4.dhcp-send-hostname=0/ipv4.dhcp-send-hostname=1/' /etc/NetworkManager/conf.d/nmg.conf
+                sudo sed -i 's/^ipv6.dhcp-send-hostname=0/ipv6.dhcp-send-hostname=1/' /etc/NetworkManager/conf.d/nmg.conf
+                sudo systemctl restart NetworkManager
+                success "Generic hostname set successfully!"
+            else
+                info "nmg.conf not found in /etc/NetworkManager/conf.d/. Only the generic hostname tweak would be applied"
+            fi
+
+        elif [[ "$confirm" == "n" ]]; then
+            exec "$0" "$@";
         else
-            echo "Invalid option was selected!"
+            warning "Invalid option was selected!"
         fi
         ;;
 
     5)
+        info "This will restore the original hostname and then enable ghost mode"
+        echo -e "\n"
+        read -r -p "Do you want to continue? [y/n]: " confirm
+
+        if [[ "$confirm" == "y" ]]; then
+            info "Restoring original hostname..."
+
+            if [ -f "$CONFIG_FILE" ] && grep -q "^original_hostname=" "$CONFIG_FILE"; then
+                ORIGINAL_HOSTNAME=$(grep "^original_hostname=" "$CONFIG_FILE" | cut -d= -f2)
+
+                if [ -n "$ORIGINAL_HOSTNAME" ]; then
+                    sudo hostnamectl set-hostname "$ORIGINAL_HOSTNAME"
+                    if [ $? -eq 0 ]; then
+                        sed -i '/^original_hostname=/d' "$CONFIG_FILE"
+                        sed -i '/^host_setting=/d' "$CONFIG_FILE"
+                        echo "host_setting=ghost" >> "$CONFIG_FILE"
+                        
+                        success "System hostname restored to '$ORIGINAL_HOSTNAME'"
+                    else
+                        warning "Failed to restore system hostname. Please check permissions"
+                    fi
+                else
+                    warning "Original hostname value is empty in configuration!"
+                fi
+            else
+                info "No original hostname was found. Skipping hostname restoration."
+            fi
+
+            info "Ensuring ghost mode configuration..."
+            sudo cp 'nmg.conf' /etc/NetworkManager/conf.d/
+
+            sudo sed -i 's/^ipv4.dhcp-send-hostname=.*/ipv4.dhcp-send-hostname=0/' /etc/NetworkManager/conf.d/nmg.conf
+            sudo sed -i 's/^ipv6.dhcp-send-hostname=.*/ipv6.dhcp-send-hostname=0/' /etc/NetworkManager/conf.d/nmg.conf
+
+            sudo systemctl restart NetworkManager
+            success "Ghost mode enabled!"
+        elif [[ "$confirm" == "n" ]]; then
+            exec "$0" "$@";
+        else
+            warning "Invalid option was selected!"
+        fi
+        ;;
+
+    6)
         echo "Network Manager Ghost"
-        echo "A CLI frontend to tweak various privacy settings in network manager"
+        echo "A CLI frontend to tweak various privacy settings in NetworkManager"
         echo "Issue tracker: https://github.com/Spectrum75/nmg"
         ;;
 
