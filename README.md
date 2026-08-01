@@ -22,9 +22,21 @@ Requires running ghost mode once, uses a stock Windows like hostname (eg: DESKTO
 
 ### Switch Back To Ghost Mode:
 
-Restores the original hostname and then enables ghost mode. Since ghost mode doesn't send any hostname, the restored hostname is kept safe.
+Restores the original hostname and then enables ghost mode. Since ghost mode doesn't send any hostname, the 
+restored hostname is kept safe.
 
 ### About This Script:
 
 Pretty self explanatory :)
 
+## Installation:
+
+Always check scripts from the internet before executing them. NMG is written fully in bash, and is simple to understand for almost all Linux users.
+
+Run the following oneliner to start the install.sh script:
+
+`wget https://raw.githubusercontent.com/Spectrum75/nmg/refs/heads/main/install.sh && chmod +x install.sh && ./install.sh`
+
+## Uninstallation:
+
+Run `uninstall.sh` and proceed with the prompts.
