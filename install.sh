@@ -16,37 +16,12 @@ if [ "$clone" = 0 ]; then
     echo "${GREEN}Repository cloned successfully!${RESET}"
     cd "nmg" || { echo "${RED}Failed to enter nmg directory${RESET}"; exit 1; }
     
-    echo -e "${YELLOW}Note: For ensuring that the included random hostname script and systemd service are not modified by non-root users, the ownership and group would have to be changed to root."
-    echo -e "The file will not be moved anywhere, unless the specific option is selected in the main script for this."
-    echo -e "You can continue without this step, however the file could be modified by any regular user, which is a potential security risk.${RESET}"
-    
-    read -r -p "Do you want to set root ownership? [y/n]: " confirm
-    if [[ "$confirm" = "y" ]]; then
-        echo "${YELLOW}Changing ownership and permissions...${RESET}"
-        sudo chown root:root nmg_random_host.service 2>/dev/null || echo "${RED}Changing ownership of service file failed${RESET}"
-        sudo chown root:root nmg_random_host.sh 2>/dev/null || echo "${RED}Changing ownership of script failed${RESET}"
-        sudo chmod 644 nmg_random_host.service 2>/dev/null || echo "${RED}Changing permission of service failed${RESET}"
-        sudo chmod 755 nmg_random_host.sh 2>/dev/null || echo "${RED}Changing permission of script failed${RESET}"
-        chmod +x uninstall.sh
-        chmod +x nmg.sh
-        echo "${GREEN}Secure ownership and permissions set successfully!${RESET}"
-    elif [[ "$confirm" = "n" ]]; then
-        echo "${GREEN}Skipped ownership setting${RESET}"
-        chmod 644 nmg_random_host.service 2>/dev/null
-        chmod 755 nmg_random_host.sh 2>/dev/null
-        chmod +x uninstall.sh
-        chmod +x nmg.sh
-    else
-        echo "${RED}Invalid option was selected!${RESET}"
-        exit 1
-    fi
-    
     echo "${YELLOW}Setting up configuration...${RESET}"
     mkdir -p "$CONFIG_DIR" || echo "${RED}Creating directory for the configuration file failed${RESET}"
     
     if [ -f "nmgc.conf" ]; then
-        mv "nmgc.conf" "$CONFIG_FILE" || echo "${RED}Moving configuration file failed${RESET}"
-        echo "${GREEN}Configuration file moved to $CONFIG_FILE${RESET}"
+        cp "nmgc.conf" "$CONFIG_FILE" || echo "${RED}Copying configuration file failed${RESET}"
+        echo "${GREEN}Configuration file copied to $CONFIG_FILE${RESET}"
     else
         echo "${YELLOW}No configuration file found${RESET}"
     fi
