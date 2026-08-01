@@ -12,7 +12,7 @@ Gets the current system hostname (spoofed or original) and displays it.
 
 Enables Mac address randomization for all available connection, this address also changes during every connection. The hostname is protected from being sent to the DHCP server as well. The network would only see the spoofed Mac address for both IPv4 and IPv6 (due to IPv6 Privacy Extensions).
 
-Checks for captive portals also get disabled in this mode. If you need to access captive portals, use a site that is dedicated for that such as neverssl.com or http://httpforever.com/.
+Checks for captive portals also get disabled in this mode. If you need to access captive portals, use a site that is dedicated for that such as http://neverssl.com or http://httpforever.com.
 
 ### Disable Ghost Mode:
 
