@@ -60,7 +60,8 @@ if [ "$clone" = 0 ]; then
             echo "${YELLOW}NMG alias already exists in $SHELL_CONFIG${RESET}"
         fi
     fi
-    
+    #rm installer
+    rm -f "$0"
     echo "${GREEN}Successfully installed NMG!${RESET}"
     echo "${YELLOW}You can now run the script with: ./nmg.sh${RESET}"
     echo "${YELLOW}Or use the alias: nmg${RESET}"
